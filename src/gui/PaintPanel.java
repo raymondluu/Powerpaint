@@ -1,0 +1,323 @@
+/*
+ * Raymond Luu
+ * TCSS 305 - Winter 2012
+ * Assignment 4 - PowerPaint
+ */
+package gui;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Line2D;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.JPanel;
+
+import tools.PencilTool;
+import tools.Tools;
+
+/**
+ * PaintPanel object class.
+ * 
+ * @author Raymond Luu
+ * @version February 19, 2012
+ */
+public class PaintPanel extends JPanel
+{
+  
+  /**
+   * Constant for Pencil string.
+   */
+  private static final String PENCIL = "Pencil";
+  
+  /**
+   * Paint panel length.
+   */
+  private static final int LENGTH = 400;
+  
+  /**
+   * Paint panel width.
+   */
+  private static final int WIDTH = 300;
+  
+  /**
+   * Pixel length.
+   */
+  private static final int PIXEL_LENGTH = 10;
+  
+  /**
+   * Current Tool.
+   */
+  private Tools my_current_tool;
+  
+  /**
+   * Current color.
+   */
+  private Color my_color;
+  
+  /**
+   * Current thickness.
+   */
+  private int my_thickness;
+  
+  /**
+   * Collection of shapes.
+   */
+  private final List<Tools> my_tool_list;
+  
+  /**
+   * Collection of undo's.
+   */
+  private List<Tools> my_undo_list;
+  
+  /**
+   * Temporary tool.
+   */
+  private Tools my_temp_tool;
+  
+  /**
+   * Grid switch.
+   */
+  private Boolean my_grid;
+  
+  /**
+   * Collection of points for path.
+   */
+  private List<Point> my_points;
+  
+  /**
+   * Constructs the PaintPanel.
+   */
+  public PaintPanel()
+  {
+    super();
+    my_tool_list = new ArrayList<Tools>();
+    my_undo_list = new ArrayList<Tools>();
+    paintPanelHelper();
+    setPreferredSize(new Dimension(LENGTH, WIDTH));
+    setBackground(Color.white);
+    
+    final MouseAdapter m = new AMouseListener();
+    addMouseListener(m);
+    addMouseMotionListener(m);
+  }
+  
+  /**
+   * Private helper method for constructor.
+   */
+  private void paintPanelHelper()
+  {
+    my_current_tool = new PencilTool();
+    my_color = Color.BLACK;
+    my_thickness = 1;
+    my_grid = false;
+    my_points = new ArrayList<Point>();
+  }
+  
+  @Override
+  public void paintComponent(final Graphics the_graphics)
+  {
+    super.paintComponent(the_graphics);
+    final Graphics2D g2d = (Graphics2D) the_graphics;
+    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                         RenderingHints.VALUE_ANTIALIAS_ON);
+    
+    if (my_grid)
+    {
+      // draw horizontal line
+      for (int i = 0; i < getHeight(); i += PIXEL_LENGTH)
+      {
+        g2d.draw(new Line2D.Double(0, i, getWidth(), i));
+      }
+      for (int j = 0; j < getWidth(); j += PIXEL_LENGTH)
+      {
+        g2d.draw(new Line2D.Double(j, 0, j, getHeight()));
+      }
+    }
+    if (my_temp_tool != null && my_temp_tool.getShape() != null)
+    {
+      g2d.setPaint(my_temp_tool.getColor());
+      g2d.setStroke(new BasicStroke(my_temp_tool.getThickness()));
+      g2d.draw(my_temp_tool.getShape());
+      my_temp_tool = new PencilTool();
+    }
+    for (Tools t : my_tool_list)
+    {
+      g2d.setPaint(t.getColor());
+      g2d.setStroke(new BasicStroke(t.getThickness()));
+      g2d.draw(t.getShape());
+    }
+    
+  }
+  
+  /**
+   * Changes the tool being used on panel.
+   * 
+   * @param the_tool tool.
+   */
+  public void changeTool(final Tools the_tool)
+  {
+    my_current_tool = the_tool;
+    my_current_tool.setColor(my_color);
+    my_current_tool.setThickness(my_thickness);
+  }
+  
+  /**
+   * Changes the color being used.
+   * 
+   * @param the_color color.
+   */
+  public void changeColor(final Color the_color)
+  {
+    my_color = the_color;
+  }
+  
+  /**
+   * Changes the thickness being used.
+   * 
+   * @param the_thickness integer thickness.
+   */
+  public void changeThickness(final int the_thickness)
+  {
+    my_thickness = the_thickness;
+  }
+  
+  /**
+   * Returns current tool in use.
+   * 
+   * @return tool.
+   */
+  public Tools getCurrTool()
+  {
+    return my_current_tool;
+  }
+  
+  /**
+   * Clear collection of tools.
+   */
+  public void clearCollection()
+  {
+    my_tool_list.clear();
+    repaint();
+  }
+  
+  /**
+   * Switches the grid on and off.
+   * 
+   * @param the_switch boolean switch.
+   */
+  public void gridSwitch(final Boolean the_switch)
+  {
+    my_grid = the_switch;
+  }
+  
+  /**
+   * Get grid status.
+   * 
+   * @return boolean status.
+   */
+  public Boolean getGridStatus()
+  {
+    return my_grid;
+  }
+  
+  /**
+   * Undo function.
+   */
+  public void undo()
+  {
+    if (my_tool_list.size() - 1 != -1)
+    {
+      my_undo_list.add(my_tool_list.remove(my_tool_list.size() - 1));
+    }
+  }
+  
+  /**
+   * Redo function.
+   */
+  public void redo()
+  {
+    if (my_undo_list.size() - 1 != -1)
+    {
+      my_tool_list.add(my_undo_list.remove(my_undo_list.size() - 1));
+    }
+  }
+  
+  // Inner class
+  
+  /**
+   * Listens for mouse clicks, to draw on panel.
+   */
+  private class AMouseListener extends MouseAdapter
+  {
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void mousePressed(final MouseEvent the_event)
+    {
+      my_undo_list = new ArrayList<Tools>();
+      my_current_tool.setStartPoint(the_event.getPoint());
+      my_current_tool.setColor(my_color);
+      my_current_tool.setThickness(my_thickness);
+      my_points.add(the_event.getPoint());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void mouseReleased(final MouseEvent the_event)
+    {
+      my_current_tool.setEndPoint(the_event.getPoint());
+      my_current_tool.setShape();
+      my_current_tool.setColor(my_color);
+      my_current_tool.setThickness(my_thickness);
+      if (PENCIL.equals(my_current_tool.getShapeString()) &&
+          my_current_tool.getShape() != null)
+      {
+        for (int i = 1; i < my_points.size(); i++)
+        {
+          ((GeneralPath) my_current_tool.getShape()).append(
+                           new Line2D.Double(my_points.get(i - 1), my_points.get(i)), true);
+        }
+      }
+      my_tool_list.add(my_current_tool);
+      my_current_tool = my_current_tool.nextTool();
+      my_points = new ArrayList<Point>();
+      repaint();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void mouseDragged(final MouseEvent the_event)
+    {
+      my_current_tool.setEndPoint(the_event.getPoint());
+      my_current_tool.setShape();
+      if (PENCIL.equals(my_current_tool.getShapeString()) &&
+          my_current_tool.getShape() != null)
+      {
+        for (int i = 1; i < my_points.size(); i++)
+        {
+          ((GeneralPath) my_current_tool.getShape()).append(
+                           new Line2D.Double(my_points.get(i - 1), my_points.get(i)), true);
+        }
+      }
+      my_temp_tool = my_current_tool;
+      my_points.add(the_event.getPoint());
+      repaint();
+    }
+  }
+  
+}
